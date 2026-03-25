@@ -40,6 +40,9 @@ var ragConfig = builder.Configuration
 builder.Services.AddSingleton(ragConfig);
 builder.Services.AddSingleton<RagComponent>();
 
+// Add health checks for monitoring
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
 
 // Initialize RagComponent to load models and establish Qdrant connection at startup
@@ -52,5 +55,7 @@ app.UseCors("RagPolicy");
 
 app.UseAuthorization();
 app.MapControllers();
+
+app.MapHealthChecks("/health");
 
 app.Run();
