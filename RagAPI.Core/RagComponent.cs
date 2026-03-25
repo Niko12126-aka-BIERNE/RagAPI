@@ -92,29 +92,34 @@ public class RagComponent : IDisposable
         var context = string.Join("\n\n", results.Select((r, i) =>
             $"[{i + 1}] {r.Payload["text"].StringValue}"));
 
-        var prompt = $"""
-            {_config.SystemPrompt}
-
+        var history = new ChatHistory();
+        history.AddMessage(AuthorRole.System, _config.SystemPrompt);
+        history.AddMessage(AuthorRole.User, $"""
             --- CONTEXT ---
             {context}
             --- END CONTEXT ---
+            """);
+        history.AddMessage(AuthorRole.Assistant, "I have read the context. I will now answer the question.");
 
-            Question: {question}
-            Answer:
-            """;
+        var context2 = _llmWeights.CreateContext(
+            new ModelParams(_config.LlmModelPath) { ContextSize = 4096, GpuLayerCount = _config.LlmGpuLayerCount });
 
-        var inferParams = new ModelParams(_config.LlmModelPath) { ContextSize = 4096 };
-        var executor = new StatelessExecutor(_llmWeights, inferParams);
+        var executor = new InteractiveExecutor(context2);
+        var session = new ChatSession(executor, history);
 
-        await foreach (var token in executor.InferAsync(prompt, new InferenceParams
-        {
-            MaxTokens = 512,
-            AntiPrompts = ["Question:", "\n\n\n", "\nThe answer", "\nThe refund"],
-            SamplingPipeline = BuildSamplingPipeline()
-        }))
+        await foreach (var token in session.ChatAsync(
+            new ChatHistory.Message(AuthorRole.User, question),
+            new InferenceParams
+            {
+                MaxTokens = 512,
+                AntiPrompts = new List<string> { "User:", "<|im_end|>", "<|end|>" },
+                SamplingPipeline = BuildSamplingPipeline()
+            }))
         {
             yield return token;
         }
+
+        context2.Dispose();
     }
 
     private ISamplingPipeline BuildSamplingPipeline()
