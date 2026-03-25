@@ -1,4 +1,6 @@
 using RagAPI.Core;
+using RagAPI.Middleware;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,7 +13,31 @@ builder.Services.AddLogging(logging =>
 });
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
+    {
+        Name = "X-Api-Key",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Description = "Enter your API key"
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "ApiKey"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
 // Configure CORS using allowed origins from appsettings.json
 var allowedOrigins = builder.Configuration
@@ -51,6 +77,7 @@ app.Services.GetRequiredService<RagComponent>();
 app.UseSwagger();
 app.UseSwaggerUI();
 
+app.UseMiddleware<ApiKeyMiddleware>();
 app.UseCors("RagPolicy");
 
 app.UseAuthorization();
