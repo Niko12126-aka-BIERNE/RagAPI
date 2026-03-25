@@ -7,7 +7,30 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="docker-compose.yml" />
+    <None Remove="GgufModels\qwen3-8b-q4_k_m.gguf" />
+    <None Remove="GgufModels\qwen3-embedding-4b-q4_k_m.gguf" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="docker-compose.yml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="GgufModels\qwen3-8b-q4_k_m.gguf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="GgufModels\qwen3-embedding-4b-q4_k_m.gguf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.2" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RagAPI.Core\RagAPI.Core.csproj" />
   </ItemGroup>
 
 </Project>

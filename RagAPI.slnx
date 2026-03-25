@@ -1,3 +1,4 @@
 <Solution>
+  <Project Path="RagAPI.Core/RagAPI.Core.csproj" Id="fed92fea-0d6d-45d6-837e-49f81b937c5d" />
   <Project Path="RagAPI/RagAPI.csproj" />
 </Solution>
