@@ -13,6 +13,23 @@ builder.Services.AddLogging(logging =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Configure CORS using allowed origins from appsettings.json
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>()
+    ?? throw new InvalidOperationException("Cors:AllowedOrigins configuration is missing from appsettings.json");
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("RagPolicy", policy =>
+    {
+        policy
+            .WithOrigins(allowedOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 // Load RagConfig from appsettings.json
 var ragConfig = builder.Configuration
     .GetSection("RagConfigurations")
@@ -30,6 +47,8 @@ app.Services.GetRequiredService<RagComponent>();
 
 app.UseSwagger();
 app.UseSwaggerUI();
+
+app.UseCors("RagPolicy");
 
 app.UseAuthorization();
 app.MapControllers();
