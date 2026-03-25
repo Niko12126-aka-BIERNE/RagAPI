@@ -45,7 +45,11 @@ public class RagComponent : IDisposable
     {
         var request = new { model = _config.EmbedModelName, input = text };
         var response = await _embedClient.PostAsJsonAsync("/v1/embeddings", request);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync();
+            throw new HttpRequestException($"Embedding failed ({response.StatusCode}): {errorBody}");
+        }
 
         var json = await response.Content.ReadAsStringAsync();
         var doc = JsonDocument.Parse(json);

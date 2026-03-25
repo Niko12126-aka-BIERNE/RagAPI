@@ -33,7 +33,7 @@ services:
       --model /models/qwen3-embedding-4b-q4_k_m.gguf
       --port 8081
       --host 0.0.0.0
-      --ctx-size 512
+      --ctx-size 2048
       --embedding
       --parallel 4
     restart: unless-stopped
