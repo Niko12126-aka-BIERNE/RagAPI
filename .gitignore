@@ -419,3 +419,6 @@ FodyWeavers.xsd
 
 # Qdrant
 qdrant_data/
+
+# Gguf Models
+GgufModels/
