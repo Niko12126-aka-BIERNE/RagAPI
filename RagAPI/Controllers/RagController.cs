@@ -24,31 +24,31 @@ public class RagController(RagComponent rag) : ControllerBase
             await file.CopyToAsync(stream);
         }
 
-        var collectionName = await _rag.IndexFileAsync(tempPath);
+        var fileName = await _rag.IndexFileAsync(tempPath);
 
         System.IO.File.Delete(tempPath);
 
-        return Ok(new { collection = collectionName });
+        return Ok(new { filename = fileName });
     }
 
     [HttpGet("query")]
-    public async Task QueryAsync([FromQuery] string question, [FromQuery] string collection)
+    public async Task QueryAsync([FromQuery] string question, [FromQuery] string? filename = null)
     {
         Response.Headers.Append("Content-Type", "text/event-stream");
         Response.Headers.Append("Cache-Control", "no-cache");
         Response.Headers.Append("X-Accel-Buffering", "no");
 
-        await foreach (var token in _rag.QueryAsync(question, collection))
+        await foreach (var token in _rag.QueryAsync(question, filename))
         {
             await Response.WriteAsync($"data: {token}\n\n");
             await Response.Body.FlushAsync();
         }
     }
 
-    [HttpGet("collections")]
-    public async Task<IActionResult> ListCollections()
+    [HttpGet("files")]
+    public async Task<IActionResult> ListFiles()
     {
-        var collections = await _rag.ListCollectionsAsync();
-        return Ok(collections);
+        var files = await _rag.ListFilesAsync();
+        return Ok(files);
     }
 }

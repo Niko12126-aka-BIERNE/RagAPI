@@ -20,6 +20,25 @@ public class RagComponent : IDisposable
         _llm = LlmProviderFactory.Create(config);
         _embedClient = new HttpClient { BaseAddress = new Uri(config.EmbedApiUrl) };
         _qdrant = new QdrantClient(config.QdrantHost, config.QdrantPort, https: false);
+
+        InitialiseCollectionAsync().GetAwaiter().GetResult();
+    }
+
+    private async Task InitialiseCollectionAsync()
+    {
+        var testVector = await EmbedAsync("test");
+        var vectorSize = (ulong)testVector.Length;
+
+        var collections = await _qdrant.ListCollectionsAsync();
+        if (!collections.Any(c => c == _config.CollectionName))
+        {
+            await _qdrant.CreateCollectionAsync(_config.CollectionName,
+                new VectorParams
+                {
+                    Size = vectorSize,
+                    Distance = Distance.Cosine
+                });
+        }
     }
 
     private async Task<float[]> EmbedAsync(string text)
@@ -44,51 +63,62 @@ public class RagComponent : IDisposable
     {
         var text = FileReader.Read(filePath);
         var chunks = TextChunker.Chunk(text, _config.ChunkSize, _config.ChunkOverlap);
+        var fileName = Path.GetFileNameWithoutExtension(filePath).ToLowerInvariant();
 
-        Console.WriteLine($"Embedding {chunks.Count} chunks...");
-        var vectors = new List<float[]>();
+        Console.WriteLine($"Embedding {chunks.Count} chunks from {fileName}...");
+
+        var points = new List<PointStruct>();
         foreach (var chunk in chunks)
         {
-            vectors.Add(await EmbedAsync(chunk));
-        }
-
-        var vectorSize = (ulong)vectors[0].Length;
-
-        var collectionName = Path.GetFileNameWithoutExtension(filePath)
-                                 .ToLowerInvariant()
-                                 .Replace(" ", "_");
-
-        var collections = await _qdrant.ListCollectionsAsync();
-        if (!collections.Any(c => c == collectionName))
-        {
-            await _qdrant.CreateCollectionAsync(collectionName,
-                new VectorParams
+            var vector = await EmbedAsync(chunk);
+            points.Add(new PointStruct
+            {
+                Id = (ulong)Guid.NewGuid().GetHashCode(),
+                Vectors = vector,
+                Payload =
                 {
-                    Size = vectorSize,
-                    Distance = Distance.Cosine
-                });
+                    ["text"] = chunk,
+                    ["filename"] = fileName
+                }
+            });
         }
 
-        var points = chunks.Select((chunk, i) => new PointStruct
-        {
-            Id = (ulong)i,
-            Vectors = vectors[i],
-            Payload = { ["text"] = chunk }
-        }).ToList();
+        await _qdrant.UpsertAsync(_config.CollectionName, points);
 
-        await _qdrant.UpsertAsync(collectionName, points);
-
-        return collectionName;
+        return fileName;
     }
 
     public async IAsyncEnumerable<string> QueryAsync(
         string question,
-        string collectionName,
+        string? filename = null,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
         var qVector = await EmbedAsync(question);
 
-        var results = await _qdrant.SearchAsync(collectionName, qVector, limit: (ulong)_config.TopK, cancellationToken: ct);
+        Filter? filter = filename is not null
+            ? new Filter
+            {
+                Must =
+                {
+                    new Condition
+                    {
+                        Field = new FieldCondition
+                        {
+                            Key = "filename",
+                            Match = new Match { Text = filename }
+                        }
+                    }
+                }
+            }
+            : null;
+
+        var results = await _qdrant.SearchAsync(
+            _config.CollectionName,
+            qVector,
+            filter: filter,
+            limit: (ulong)_config.TopK,
+            cancellationToken: ct
+        );
 
         var context = string.Join("\n\n", results.Select((r, i) =>
             $"[{i + 1}] {r.Payload["text"].StringValue}"));
@@ -107,9 +137,18 @@ public class RagComponent : IDisposable
         }
     }
 
-    public async Task<IEnumerable<string>> ListCollectionsAsync()
+    public async Task<IEnumerable<string>> ListFilesAsync()
     {
-        return await _qdrant.ListCollectionsAsync();
+        var result = await _qdrant.ScrollAsync(
+            _config.CollectionName,
+            limit: 1000,
+            payloadSelector: true
+        );
+
+        return result.Result
+            .Select(p => p.Payload["filename"].StringValue)
+            .Distinct()
+            .OrderBy(f => f);
     }
 
     public void Dispose()
