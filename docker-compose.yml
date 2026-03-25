@@ -1,8 +1,54 @@
 services:
+
   qdrant:
     image: qdrant/qdrant
     ports:
       - "6333:6333"
+      - "6334:6334"
     volumes:
       - ./qdrant_data:/qdrant/storage
+    restart: unless-stopped
+
+  llama-llm:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./RagAPI/GgufModels:/models
+    command: >
+      --model /models/qwen3-8b-q4_k_m.gguf
+      --port 8080
+      --host 0.0.0.0
+      --ctx-size 4096
+      --parallel 2
+    restart: unless-stopped
+
+  llama-embed:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./RagAPI/GgufModels:/models
+    command: >
+      --model /models/qwen3-embedding-4b-q4_k_m.gguf
+      --port 8081
+      --host 0.0.0.0
+      --ctx-size 512
+      --embedding
+      --parallel 4
+    restart: unless-stopped
+
+  ragapi:
+    build:
+      context: .
+      dockerfile: RagAPI/Dockerfile
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+    depends_on:
+      - qdrant
+      - llama-llm
+      - llama-embed
     restart: unless-stopped
