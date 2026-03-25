@@ -65,7 +65,7 @@ public class RagComponent : IDisposable
 
     public async Task<string> IndexFileAsync(string filePath)
     {
-        var text = FileReader.Read(filePath);
+        var text = await FileReader.ReadAsync(filePath, _llm);
         var chunks = TextChunker.Chunk(text, _config.ChunkSize, _config.ChunkOverlap);
         var fileName = Path.GetFileNameWithoutExtension(filePath).ToLowerInvariant();
 
@@ -80,10 +80,10 @@ public class RagComponent : IDisposable
                 Id = (ulong)Guid.NewGuid().GetHashCode(),
                 Vectors = vector,
                 Payload =
-                {
-                    ["text"] = chunk,
-                    ["filename"] = fileName
-                }
+            {
+                ["text"]     = chunk,
+                ["filename"] = fileName
+            }
             });
         }
 

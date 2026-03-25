@@ -8,16 +8,16 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="GgufModels\qwen3-8b-q4_k_m.gguf" />
-    <None Remove="GgufModels\qwen3-embedding-4b-q4_k_m.gguf" />
+    <None Remove="tessdata\dan.traineddata" />
+    <None Remove="tessdata\eng.traineddata" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="Dockerfile" />
-    <Content Include="GgufModels\qwen3-8b-q4_k_m.gguf">
+    <Content Include="tessdata\dan.traineddata">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="GgufModels\qwen3-embedding-4b-q4_k_m.gguf">
+    <Content Include="tessdata\eng.traineddata">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
@@ -34,6 +34,21 @@
     <Compile Update="Program.cs">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="GgufModels\mmproj-Qwen2.5-VL-7B-Instruct-f16.gguf">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
+    <None Update="GgufModels\Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
+    <None Update="GgufModels\qwen3-8b-q4_k_m.gguf">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
+    <None Update="GgufModels\qwen3-embedding-4b-q4_k_m.gguf">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

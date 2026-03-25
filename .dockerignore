@@ -1,0 +1,8 @@
+RagAPI/GgufModels/
+RagAPI/bin/
+RagAPI/obj/
+RagAPI.Core/bin/
+RagAPI.Core/obj/
+**/qdrant_data/
+**/.vs/
+**/.git/

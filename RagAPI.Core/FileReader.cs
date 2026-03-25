@@ -1,52 +1,92 @@
 ﻿using System.Text;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
+using RagAPI.Core.Providers;
 using UglyToad.PdfPig;
 
 namespace RagAPI.Core;
 
 public static class FileReader
 {
-    public static string Read(string filePath)
-    {
-        var extension = Path.GetExtension(filePath).ToLowerInvariant();
+    private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif"];
 
-        //TODO: Expand this to include more file types in the future
-        return extension switch
+    public static async Task<string> ReadAsync(string filePath, ILlmProvider llmProvider)
+    {
+        var ext = Path.GetExtension(filePath).ToLowerInvariant();
+
+        if (ImageExtensions.Contains(ext))
+        {
+            return await ReadImageAsync(filePath, llmProvider);
+        }
+
+        return ext switch
         {
             ".txt" or ".md" => File.ReadAllText(filePath),
-            ".pdf" => ReadPdf(filePath),
+            ".pdf" => await ReadPdfAsync(filePath, llmProvider),
             ".docx" => ReadDocx(filePath),
-            _ => throw new NotSupportedException($"Unsupported file type: {extension}. Supported types are: .txt, .md, .pdf, .docx")
+            _ => throw new NotSupportedException(
+                                   $"Unsupported file type: {ext}. Supported: .txt .md .pdf .docx .jpg .jpeg .png .bmp .tiff")
         };
     }
 
-    private static string ReadPdf(string filePath)
+    private static async Task<string> ReadImageAsync(string filePath, ILlmProvider llmProvider)
     {
-        var stringBuilder = new StringBuilder();
+        var ocrText = OcrReader.ReadImage(filePath);
 
-        using var document = PdfDocument.Open(filePath);
-        foreach (var page in document.GetPages())
+        if (OcrReader.HasMeaningfulText(ocrText))
         {
-            stringBuilder.AppendLine(page.Text);
+            return ocrText;
         }
 
-        return stringBuilder.ToString();
+        return await llmProvider.DescribeImageAsync(filePath,
+            "Describe this image in detail. Include colors, objects, text, people, and any other relevant visual information.");
+    }
+
+    private static async Task<string> ReadPdfAsync(string filePath, ILlmProvider llmProvider)
+    {
+        var sb = new StringBuilder();
+
+        using var doc = PdfDocument.Open(filePath);
+        foreach (var page in doc.GetPages())
+        {
+            var text = page.Text;
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                sb.AppendLine(text);
+            }
+            else
+            {
+                var ocrText = OcrReader.ReadScannedPdf(filePath);
+                if (OcrReader.HasMeaningfulText(ocrText))
+                {
+                    sb.AppendLine(ocrText);
+                }
+                else
+                {
+                    var description = await llmProvider.DescribeImageAsync(filePath,
+                        "Describe all text and visual content in this document page in detail.");
+                    sb.AppendLine(description);
+                }
+                break;
+            }
+        }
+
+        return sb.ToString();
     }
 
     private static string ReadDocx(string filePath)
     {
-        var stringBuilder = new StringBuilder();
+        var sb = new StringBuilder();
 
-        using var document = WordprocessingDocument.Open(filePath, false);
-        var body = document.MainDocumentPart?.Document?.Body 
-            ?? throw new InvalidOperationException("Could not read DOCX body. File may be corrupt or empty.");
+        using var doc = WordprocessingDocument.Open(filePath, false);
+        var body = doc.MainDocumentPart?.Document?.Body
+            ?? throw new InvalidOperationException("Could not read DOCX body — file may be corrupt or empty.");
 
         foreach (var paragraph in body.Descendants<Paragraph>())
         {
-            stringBuilder.AppendLine(paragraph.InnerText);
+            sb.AppendLine(paragraph.InnerText);
         }
 
-        return stringBuilder.ToString();
+        return sb.ToString();
     }
 }

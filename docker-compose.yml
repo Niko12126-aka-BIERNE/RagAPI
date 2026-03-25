@@ -38,6 +38,20 @@ services:
       --parallel 4
     restart: unless-stopped
 
+  llama-vision:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    ports:
+      - "8082:8082"
+    volumes:
+      - ./RagAPI/GgufModels:/models
+    command: >
+      --model /models/Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf
+      --mmproj /models/mmproj-Qwen2.5-VL-7B-Instruct-f16.gguf
+      --port 8082
+      --host 0.0.0.0
+      --ctx-size 4096
+    restart: unless-stopped
+
   ragapi:
     build:
       context: .

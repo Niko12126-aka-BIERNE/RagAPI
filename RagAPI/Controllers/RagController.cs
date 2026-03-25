@@ -18,7 +18,7 @@ public class RagController(RagComponent rag, ILogger<RagController> logger) : Co
             return BadRequest("No file provided.");
         }
 
-        var allowedExtensions = new[] { ".txt", ".md", ".pdf", ".docx" };
+        var allowedExtensions = new[] { ".txt", ".md", ".pdf", ".docx", ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif" };
         var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (!allowedExtensions.Contains(ext))
         {

@@ -13,6 +13,9 @@ public class RagConfig
     public string LlamaServerUrl { get; set; } = "http://localhost:8080";
     public string LlamaModelName { get; set; } = "qwen3";
 
+    // Vision-server (local, for multimodal)
+    public string VisionServerUrl { get; set; } = "http://localhost:8082";
+
     // Anthropic (Claude)
     public string AnthropicApiKey { get; set; } = "";
     public string AnthropicModel { get; set; } = "claude-sonnet-4-5";
