@@ -11,6 +11,7 @@ services:
 
   llama-llm:
     image: ghcr.io/ggml-org/llama.cpp:server
+    profiles: ["local"]
     ports:
       - "8080:8080"
     volumes:
@@ -33,13 +34,14 @@ services:
       --model /models/qwen3-embedding-4b-q4_k_m.gguf
       --port 8081
       --host 0.0.0.0
-      --ctx-size 2048
+      --ctx-size 4096
       --embedding
       --parallel 4
     restart: unless-stopped
 
   llama-vision:
     image: ghcr.io/ggml-org/llama.cpp:server
+    profiles: ["local"]
     ports:
       - "8082:8082"
     volumes:
@@ -61,14 +63,14 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
+      - RagConfigurations__AnthropicApiKey=${ANTHROPIC_API_KEY}
     depends_on:
       - qdrant
-      - llama-llm
       - llama-embed
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    restart: unless-stopped
